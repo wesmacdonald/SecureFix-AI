@@ -42,7 +42,7 @@ Every recommendation is advisory only. Human approval is mandatory. Policy, revi
 
 ### How would this be monitored?
 
-The service exposes health endpoints, structured logs, and metrics for requests, recommendations, approvals, rejections, AI calls, failures, and fallback use.
+The service exposes `/health`, `/ready`, and Admin-only `/metrics` endpoints, structured logs, and metrics for requests, recommendations, approvals, rejections, AI calls, and failures.
 
 ### How would failures be handled?
 
@@ -79,6 +79,7 @@ AI timeout or invalid output falls back to a rules-based recommendation and requ
 - [docs/threat-model.md](docs/threat-model.md) - threat analysis and mitigations
 - [docs/ai-system-card.md](docs/ai-system-card.md) - AI system card
 - [docs/runbook.md](docs/runbook.md) - rollback, recovery, and escalation
+- [infra/README.md](infra/README.md) - Azure Container Apps deployment instructions
 
 ## Demo expectations
 
@@ -92,6 +93,26 @@ The intended demo should show:
 6. audit events and governance output for the full flow
 7. a blocked prompt-injection or unauthorized-action attempt
 8. a fallback path when AI is unavailable
+
+## Running the local demo
+
+Start the API, then run the authenticated end-to-end validation script in a second terminal:
+
+```bash
+dotnet run --project src/SecureFix.Api --urls http://127.0.0.1:5000
+bash ./demo-end-to-end.sh
+```
+
+The script produces timestamped JSON evidence in `demo-results-*` and verifies that
+remediation is blocked until a `SecurityReviewer` approves the workflow.
+
+Run the security-control demo to validate injection containment, unauthorized approval
+rejection, AI fallback, and the kill switch. It starts isolated local API instances and
+writes evidence to `demo-security-results-*`.
+
+```bash
+bash ./demo-security-controls.sh
+```
 
 ## Status
 

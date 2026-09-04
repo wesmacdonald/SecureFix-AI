@@ -37,17 +37,20 @@ public class RemediationRecommendationService : IRemediationRecommendationServic
     private readonly IAIRecommendationProvider _aiProvider;
     private readonly IApprovalService _approvalService;
     private readonly ILogger<RemediationRecommendationService> _logger;
+    private readonly IOperationalMetrics _metrics;
 
     public RemediationRecommendationService(
         IUnitOfWork unitOfWork,
         IAIRecommendationProvider aiProvider,
         IApprovalService approvalService,
-        ILogger<RemediationRecommendationService> logger)
+        ILogger<RemediationRecommendationService> logger,
+        IOperationalMetrics? metrics = null)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _aiProvider = aiProvider ?? throw new ArgumentNullException(nameof(aiProvider));
         _approvalService = approvalService ?? throw new ArgumentNullException(nameof(approvalService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _metrics = metrics ?? NullOperationalMetrics.Instance;
     }
 
     /// <summary>
@@ -99,14 +102,24 @@ public class RemediationRecommendationService : IRemediationRecommendationServic
             alert.ProviderSeverity
         );
 
-        var aiResult = await _aiProvider.RecommendAsync(
-            alert: MapAlertEntityToDomain(alert),
-            assessment: MapAssessmentEntityToDomain(assessment)
-        );
-
-        if (aiResult == null)
+        AIRecommendationResult aiResult;
+        try
         {
-            throw new InvalidOperationException("AI provider returned null recommendation");
+            aiResult = await _aiProvider.RecommendAsync(
+                alert: MapAlertEntityToDomain(alert),
+                assessment: MapAssessmentEntityToDomain(assessment)
+            );
+            if (aiResult == null)
+            {
+                throw new InvalidOperationException("AI provider returned null recommendation");
+            }
+
+            _metrics.RecordAICall(failed: false);
+        }
+        catch
+        {
+            _metrics.RecordAICall(failed: true);
+            throw;
         }
 
         // Validate AI response - reject if version doesn't match expected

@@ -1,227 +1,83 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# SecureFix AI - Phase 1 End-to-End Demo Validation
-# This script executes the complete security vulnerability workflow:
-# 1. Alert Ingestion (Dependabot payload)
-# 2. Risk Assessment
-# 3. AI Remediation Recommendation
-# 4. Approval Gate (human sign-off)
-# 5. Draft PR Proposal Generation
-# 6. Audit Trail Verification
+BASE_URL="${BASE_URL:-http://127.0.0.1:5000}"
+DEMO_TOKEN="${SECUREFIX_DEMO_TOKEN:-securefix-demo-token}"
+RESULTS_DIR="${RESULTS_DIR:-./demo-results-$(date +%s)}"
+mkdir -p "$RESULTS_DIR"
 
-set -e
-
-BASE_URL="http://localhost:5000"
-DEMO_DIR="./demo-results-$(date +%s)"
-mkdir -p "$DEMO_DIR"
-
-echo "==========================================="
-echo "SecureFix AI - Phase 1 Demo Validation"
-echo "==========================================="
-echo "Base URL: $BASE_URL"
-echo "Results: $DEMO_DIR"
-echo ""
-
-# Helper function to make API calls and save results
-call_api() {
+api() {
     local method=$1
     local endpoint=$2
-    local data=$3
-    local output_file=$4
-    
-    local url="$BASE_URL$endpoint"
-    local timestamp=$(date '+%H:%M:%S')
-    
-    echo "[$timestamp] $method $endpoint"
-    
-    if [ -z "$data" ]; then
-        curl -s -X "$method" \
-            -H "Content-Type: application/json" \
-            "$url" | tee "$DEMO_DIR/$output_file"
-    else
-        curl -s -X "$method" \
-            -H "Content-Type: application/json" \
-            -d "$data" \
-            "$url" | tee "$DEMO_DIR/$output_file"
+    local role=$3
+    local output=$4
+    local data=${5:-}
+    local curl_args=(
+        --fail-with-body
+        --silent
+        --show-error
+        -X "$method"
+        -H "Authorization: Bearer $DEMO_TOKEN"
+        -H "X-User-Id: demo-reviewer@example.com"
+        -H "X-User-Role: $role"
+        -H "Content-Type: application/json"
+    )
+
+    if [[ -n "$data" ]]; then
+        curl_args+=(--data "$data")
     fi
-    
-    echo ""
+
+    local curl_status=0
+    curl "${curl_args[@]}" "$BASE_URL$endpoint" | tee "$RESULTS_DIR/$output" || curl_status=$?
+    printf '\n'
+    return "$curl_status"
 }
 
-echo "========== STEP 1: Check API Health =========="
-call_api "GET" "/health" "" "01-health.json"
-echo ""
+curl --fail-with-body --silent --show-error "$BASE_URL/health" | tee "$RESULTS_DIR/01-health.json"
+printf '\n'
 
-echo "========== STEP 2: Ingest Dependabot Alert =========="
-# Sample Dependabot payload for lodash vulnerability
-ALERT_PAYLOAD='{
-  "payload": {
-    "dependency": {
-      "package": {
-        "ecosystem": "npm",
-        "name": "lodash"
-      },
-      "version": "4.17.20",
-      "requirements": "~4.17.20"
-    },
-    "alert": {
-      "number": 12345,
-      "state": "open",
-      "dependency_scope": "runtime",
-      "security_advisory": {
-        "ghsa_id": "GHSA-35jh-r3h4-6jhm",
-        "cve_id": "CVE-2021-23337",
-        "summary": "Lodash vulnerable to prototype pollution in zipObjectDeep",
-        "description": "Versions of lodash before 4.17.21 are vulnerable to Prototype Pollution via the zipObjectDeep function.",
-        "severity": "high",
-        "cwes": ["CWE-1321"],
-        "identifiers": [
-          {"type": "GHSA", "value": "GHSA-35jh-r3h4-6jhm"},
-          {"type": "CVE", "value": "CVE-2021-23337"}
-        ],
-        "references": [
-          "https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm"
-        ],
-        "published_at": "2021-02-15T21:52:00Z",
-        "updated_at": "2021-02-15T21:52:00Z",
-        "withdrawn_at": null,
-        "vulnerable_version_range": "< 4.17.21",
-        "first_patched_version": {
-          "identifier": "4.17.21"
-        }
-      }
-    }
-  },
-  "external_alert_id": "dependabot-12345",
-  "provider_severity": "High"
-}'
+ALERT_ID="demo-lodash-$(date +%s)"
+ALERT_PAYLOAD=$(cat <<EOF
+{
+  "externalAlertId": "$ALERT_ID",
+  "cveId": "CVE-2021-23337",
+  "packageName": "lodash",
+  "installedVersion": "4.17.20",
+  "fixedVersion": "4.17.21",
+  "providerSeverity": "high",
+  "description": "Synthetic Dependabot-style demo alert for lodash prototype pollution.",
+  "isDirectDependency": true,
+  "isExploitable": false,
+  "repositoryIdentifier": "securefix-demo",
+  "advisoryUrl": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm"
+}
+EOF
+)
 
-call_api "POST" "/api/v1/alerts" "$ALERT_PAYLOAD" "02-alert-ingest.json"
+api POST /api/v1/alerts Developer 02-alert-ingested.json "$ALERT_PAYLOAD"
+WORKFLOW_ID=$(jq -er '.workflowId' "$RESULTS_DIR/02-alert-ingested.json")
 
-# Extract alert ID from response
-ALERT_ID=$(jq -r '.data.id' "$DEMO_DIR/02-alert-ingest.json")
-CORRELATION_ID=$(jq -r '.data.correlationId' "$DEMO_DIR/02-alert-ingest.json")
+api GET "/api/v1/workflows/$WORKFLOW_ID" Developer 03-pending-approval.json
 
-if [ "$ALERT_ID" = "null" ]; then
-    echo "ERROR: Failed to ingest alert"
+# This must fail: recommendations require an approved workflow.
+if api POST "/api/v1/workflows/$WORKFLOW_ID/remediate" Developer 04-remediation-blocked.json; then
+    echo "Expected remediation to be blocked until approval." >&2
     exit 1
 fi
 
-echo "✓ Alert ingested successfully"
-echo "  Alert ID: $ALERT_ID"
-echo "  Correlation ID: $CORRELATION_ID"
-echo ""
-
-echo "========== STEP 3: Check Workflow Status (After Ingestion) =========="
-call_api "GET" "/api/v1/workflows/$ALERT_ID" "" "03-workflow-status-ingested.json"
-echo ""
-
-echo "========== STEP 4: Generate AI Recommendation =========="
-call_api "POST" "/api/v1/workflows/$ALERT_ID/remediate" "" "04-remediation-recommendation.json"
-
-# Extract recommendation ID
-REC_ID=$(jq -r '.id' "$DEMO_DIR/04-remediation-recommendation.json")
-echo "✓ Recommendation generated"
-echo "  Recommendation ID: $REC_ID"
-echo ""
-
-echo "========== STEP 5: Check Workflow Status (After Recommendation) =========="
-call_api "GET" "/api/v1/workflows/$ALERT_ID" "" "05-workflow-status-recommended.json"
-echo ""
-
-echo "========== STEP 6: Approve the Workflow =========="
 APPROVAL_PAYLOAD='{
-  "reviewerIdentity": "demo-reviewer@example.com",
+  "reviewer": "demo-reviewer@example.com",
   "reviewerRole": "SecurityReviewer",
-  "reason": "Demo validation - vulnerability is critical and requires immediate action"
+  "decision": "approved",
+  "reason": "Synthetic demo alert reviewed by a security reviewer."
 }'
+api POST "/api/v1/workflows/$WORKFLOW_ID/approve" SecurityReviewer 05-approved.json "$APPROVAL_PAYLOAD"
+api POST "/api/v1/workflows/$WORKFLOW_ID/remediate" SecurityReviewer 06-remediation.json
+RECOMMENDATION_ID=$(jq -er '.id' "$RESULTS_DIR/06-remediation.json")
+api POST "/api/v1/workflows/$RECOMMENDATION_ID/proposal" SecurityReviewer 07-draft-proposal.json
+api GET "/api/v1/workflows/$WORKFLOW_ID" SecurityReviewer 08-final-workflow.json
+api GET "/api/v1/workflows/$WORKFLOW_ID/audit-events" SecurityReviewer 09-audit-events.json
+api GET "/api/v1/workflows/$WORKFLOW_ID/governance-report" SecurityReviewer 10-governance-report.json
+api GET /metrics Admin 11-metrics.json
 
-call_api "POST" "/api/v1/workflows/$ALERT_ID/approve" "$APPROVAL_PAYLOAD" "06-approval.json"
-echo "✓ Workflow approved"
-echo ""
-
-echo "========== STEP 7: Check Workflow Status (After Approval) =========="
-call_api "GET" "/api/v1/workflows/$ALERT_ID" "" "07-workflow-status-approved.json"
-echo ""
-
-echo "========== STEP 8: Generate Draft PR Proposal =========="
-call_api "POST" "/api/v1/workflows/$ALERT_ID/proposal" "" "08-pr-proposal.json"
-
-PROPOSAL_ID=$(jq -r '.id' "$DEMO_DIR/08-pr-proposal.json")
-echo "✓ PR proposal generated"
-echo "  Proposal ID: $PROPOSAL_ID"
-echo ""
-
-echo "========== STEP 9: Retrieve PR Proposal =========="
-call_api "GET" "/api/v1/workflows/$ALERT_ID/proposal" "" "09-pr-proposal-retrieved.json"
-echo ""
-
-echo "========== STEP 10: Check Final Workflow Status =========="
-call_api "GET" "/api/v1/workflows/$ALERT_ID" "" "10-workflow-status-final.json"
-echo ""
-
-echo "========== STEP 11: Verify Audit Trail =========="
-# Note: This endpoint would need to be implemented to retrieve audit events
-# For now, we document what should be captured
-cat > "$DEMO_DIR/11-audit-expectations.txt" << 'EOF'
-Expected Audit Events (in correlation order):
-1. VulnerabilityAlertIngested - Actor: AlertService
-2. RiskAssessmentCompleted - Actor: RiskScoringEngine
-3. RemediationRecommendationGenerated - Actor: AI-Provider
-4. ApprovalDecisionRecorded - Actor: demo-reviewer@example.com
-5. PullRequestProposalGenerated - Actor: Proposal-Service
-
-All events should have:
-- CorrelationId: (matching alert correlation ID)
-- Timestamp: ISO-8601 UTC
-- IsSecurityRelevant: true
-- Details: comprehensive context
-EOF
-
-echo "✓ Audit trail expectations documented"
-echo ""
-
-echo "========== SUMMARY REPORT =========="
-echo ""
-echo "✓ Alert Ingestion: SUCCESS"
-echo "  - Alert ID: $ALERT_ID"
-echo "  - Package: lodash 4.17.20"
-echo "  - Severity: High"
-echo ""
-
-RECOMMENDATION_ACTION=$(jq -r '.recommendedAction' "$DEMO_DIR/04-remediation-recommendation.json")
-RECOMMENDATION_CONFIDENCE=$(jq -r '.confidenceScore' "$DEMO_DIR/04-remediation-recommendation.json")
-echo "✓ AI Recommendation: SUCCESS"
-echo "  - Recommendation ID: $REC_ID"
-echo "  - Action: $RECOMMENDATION_ACTION"
-echo "  - Confidence: $(printf '%.1f' "$RECOMMENDATION_CONFIDENCE")%"
-echo ""
-
-APPROVAL_STATUS=$(jq -r '.data.status' "$DEMO_DIR/06-approval.json")
-echo "✓ Approval Gate: SUCCESS"
-echo "  - Status: $APPROVAL_STATUS"
-echo "  - Reviewer: demo-reviewer@example.com"
-echo ""
-
-PROPOSAL_TITLE=$(jq -r '.proposedTitle' "$DEMO_DIR/08-pr-proposal.json")
-PROPOSAL_EFFORT=$(jq -r '.estimatedEffort' "$DEMO_DIR/08-pr-proposal.json")
-echo "✓ PR Proposal: SUCCESS"
-echo "  - Proposal ID: $PROPOSAL_ID"
-echo "  - Title: $PROPOSAL_TITLE"
-echo "  - Estimated Effort: $PROPOSAL_EFFORT"
-echo ""
-
-echo "========== GOVERNANCE VALIDATION =========="
-echo ""
-echo "✓ Approval Gate Enforced: Recommendation only generated after approval"
-echo "✓ Audit Trail: All operations logged with correlation ID"
-echo "✓ AI Confidence: Presented to reviewer for decision-making"
-echo "✓ No Auto-Approval: Human signature required at each gate"
-echo "✓ Rollback Guidance: Included in proposal"
-echo ""
-
-echo "========== DEMO COMPLETE =========="
-echo "Results saved to: $DEMO_DIR"
-echo "View results:"
-echo "  cat $DEMO_DIR/*.json | jq"
-echo ""
+echo "Demo completed successfully. Evidence is in $RESULTS_DIR"

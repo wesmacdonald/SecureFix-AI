@@ -1,6 +1,7 @@
 namespace SecureFix.Api.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using SecureFix.Core.Models;
 using SecureFix.Core.Services;
 
@@ -9,6 +10,7 @@ using SecureFix.Core.Services;
 /// Manages AI-powered remediation suggestions for approved vulnerabilities.
 /// </summary>
 [ApiController]
+[Authorize(Roles = "SecurityReviewer,Admin")]
 [Route("api/v1/workflows")]
 [Produces("application/json")]
 public class RemediationController : ControllerBase

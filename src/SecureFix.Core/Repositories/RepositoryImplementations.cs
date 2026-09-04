@@ -33,10 +33,11 @@ public class RiskAssessmentRepository : BaseRepository<RiskAssessmentEntity>, IR
 
     public async Task<RiskAssessmentEntity?> GetByAlertIdAsync(string alertId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(r => r.AlertId == alertId)
+            .ToListAsync())
             .OrderByDescending(r => r.AssessedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault();
     }
 
     public async Task<IEnumerable<RiskAssessmentEntity>> GetBySeverityAsync(int severity)
@@ -64,18 +65,20 @@ public class RemediationRecommendationRepository : BaseRepository<RemediationRec
 
     public async Task<RemediationRecommendationEntity?> GetByAlertIdAsync(string alertId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(r => r.AlertId == alertId)
+            .ToListAsync())
             .OrderByDescending(r => r.GeneratedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault();
     }
 
     public async Task<IEnumerable<RemediationRecommendationEntity>> GetByProviderAsync(string modelIdentifier)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(r => r.ModelIdentifier == modelIdentifier)
+            .ToListAsync())
             .OrderByDescending(r => r.GeneratedAt)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<RemediationRecommendationEntity>> GetByCorrelationIdAsync(string correlationId)
@@ -95,34 +98,38 @@ public class ApprovalDecisionRepository : BaseRepository<ApprovalDecisionEntity>
 
     public async Task<ApprovalDecisionEntity?> GetByWorkflowIdAsync(string workflowId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(a => a.WorkflowId == workflowId)
+            .ToListAsync())
             .OrderByDescending(a => a.DecisionTime)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault();
     }
 
     public async Task<ApprovalDecisionEntity?> GetByAlertIdAsync(string alertId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(a => a.AlertId == alertId)
+            .ToListAsync())
             .OrderByDescending(a => a.DecisionTime)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault();
     }
 
     public async Task<IEnumerable<ApprovalDecisionEntity>> GetByReviewerAsync(string reviewerIdentity)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(a => a.ReviewerIdentity == reviewerIdentity)
+            .ToListAsync())
             .OrderByDescending(a => a.DecisionTime)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<ApprovalDecisionEntity>> GetByStatusAsync(int status)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(a => a.Status == status)
+            .ToListAsync())
             .OrderByDescending(a => a.DecisionTime)
-            .ToListAsync();
+            .ToList();
     }
 }
 
@@ -135,34 +142,37 @@ public class AuditEventRepository : BaseRepository<AuditEventEntity>, IAuditEven
 
     public async Task<IEnumerable<AuditEventEntity>> GetByCorrelationIdAsync(string correlationId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(e => e.CorrelationId == correlationId)
+            .ToListAsync())
             .OrderBy(e => e.Timestamp)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<AuditEventEntity>> GetByEventTypeAsync(string eventType)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(e => e.EventType == eventType)
+            .ToListAsync())
             .OrderByDescending(e => e.Timestamp)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<AuditEventEntity>> GetSecurityEventsAsync()
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(e => e.IsSecurityRelevant)
+            .ToListAsync())
             .OrderByDescending(e => e.Timestamp)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<AuditEventEntity>> GetTimelineAsync(DateTimeOffset startTime, DateTimeOffset endTime)
     {
-        return await _dbSet
+        return (await _dbSet.ToListAsync())
             .Where(e => e.Timestamp >= startTime && e.Timestamp <= endTime)
             .OrderBy(e => e.Timestamp)
-            .ToListAsync();
+            .ToList();
     }
 }
 
@@ -175,25 +185,28 @@ public class PullRequestProposalRepository : BaseRepository<PullRequestProposalE
 
     public async Task<PullRequestProposalEntity?> GetByRecommendationIdAsync(string recommendationId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(p => p.RecommendationId == recommendationId)
+            .ToListAsync())
             .OrderByDescending(p => p.GeneratedAt)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault();
     }
 
     public async Task<IEnumerable<PullRequestProposalEntity>> GetByAlertIdAsync(string alertId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(p => p.AlertId == alertId)
+            .ToListAsync())
             .OrderByDescending(p => p.GeneratedAt)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<IEnumerable<PullRequestProposalEntity>> GetByCorrelationIdAsync(string correlationId)
     {
-        return await _dbSet
+        return (await _dbSet
             .Where(p => p.CorrelationId == correlationId)
+            .ToListAsync())
             .OrderByDescending(p => p.GeneratedAt)
-            .ToListAsync();
+            .ToList();
     }
 }

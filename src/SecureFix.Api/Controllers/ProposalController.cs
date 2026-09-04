@@ -1,6 +1,7 @@
 namespace SecureFix.Api.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using SecureFix.Core.Models;
 using SecureFix.Core.Services;
 
@@ -9,18 +10,22 @@ using SecureFix.Core.Services;
 /// Manages draft PR proposal generation and retrieval for approved workflows.
 /// </summary>
 [ApiController]
+[Authorize(Roles = "SecurityReviewer,Admin")]
 [Route("api/v1/workflows")]
 [Produces("application/json")]
 public class ProposalController : ControllerBase
 {
     private readonly IPullRequestProposalService _proposalService;
+    private readonly IKillSwitch _killSwitch;
     private readonly ILogger<ProposalController> _logger;
 
     public ProposalController(
         IPullRequestProposalService proposalService,
+        IKillSwitch killSwitch,
         ILogger<ProposalController> logger)
     {
         _proposalService = proposalService ?? throw new ArgumentNullException(nameof(proposalService));
+        _killSwitch = killSwitch ?? throw new ArgumentNullException(nameof(killSwitch));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -40,6 +45,16 @@ public class ProposalController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerateProposal(string id)
     {
+        if (_killSwitch.IsEnabled)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "Kill Switch Active",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "Draft action generation is disabled while the kill switch is active."
+            });
+        }
+
         if (string.IsNullOrWhiteSpace(id))
         {
             return BadRequest(new ProblemDetails

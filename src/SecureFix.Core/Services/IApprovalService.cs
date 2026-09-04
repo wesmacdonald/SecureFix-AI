@@ -40,13 +40,16 @@ public class ApprovalService : IApprovalService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ApprovalService> _logger;
+    private readonly IOperationalMetrics _metrics;
 
     public ApprovalService(
         IUnitOfWork unitOfWork,
-        ILogger<ApprovalService> logger)
+        ILogger<ApprovalService> logger,
+        IOperationalMetrics? metrics = null)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _metrics = metrics ?? NullOperationalMetrics.Instance;
     }
 
     public async Task<WorkflowStatusResponse?> GetWorkflowStatusAsync(string workflowId)
@@ -154,6 +157,7 @@ public class ApprovalService : IApprovalService
         await _unitOfWork.ApprovalDecisions.AddAsync(MapDomainToApprovalEntity(decision));
         await _unitOfWork.AuditEvents.AddAsync(MapDomainToAuditEntity(auditEvent));
         await _unitOfWork.SaveChangesAsync();
+        _metrics.RecordApproval();
 
         _logger.LogInformation("Workflow {WorkflowId} approved by {Reviewer}", workflowId, reviewer);
 
@@ -218,6 +222,7 @@ public class ApprovalService : IApprovalService
         await _unitOfWork.ApprovalDecisions.AddAsync(MapDomainToApprovalEntity(decision));
         await _unitOfWork.AuditEvents.AddAsync(MapDomainToAuditEntity(auditEvent));
         await _unitOfWork.SaveChangesAsync();
+        _metrics.RecordRejection();
 
         _logger.LogInformation("Workflow {WorkflowId} rejected by {Reviewer}", workflowId, reviewer);
 

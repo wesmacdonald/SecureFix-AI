@@ -35,15 +35,18 @@ public class AlertIngestionService : IAlertIngestionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRiskScoringEngine _riskScoringEngine;
     private readonly ILogger<AlertIngestionService> _logger;
+    private readonly IOperationalMetrics _metrics;
 
     public AlertIngestionService(
         IUnitOfWork unitOfWork,
         IRiskScoringEngine riskScoringEngine,
-        ILogger<AlertIngestionService> logger)
+        ILogger<AlertIngestionService> logger,
+        IOperationalMetrics? metrics = null)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _riskScoringEngine = riskScoringEngine ?? throw new ArgumentNullException(nameof(riskScoringEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _metrics = metrics ?? NullOperationalMetrics.Instance;
     }
 
     public async Task<bool> IsDuplicateAsync(string externalAlertId)
@@ -147,6 +150,7 @@ public class AlertIngestionService : IAlertIngestionService
             await _unitOfWork.RiskAssessments.AddAsync(MapDomainToRiskEntity(assessment));
             await _unitOfWork.AuditEvents.AddAsync(MapDomainToAuditEntity(auditEvent));
             await _unitOfWork.SaveChangesAsync();
+            _metrics.RecordVulnerabilityAnalyzed();
 
             _logger.LogInformation(
                 "Alert ingested successfully. WorkflowId: {WorkflowId}, CorrelationId: {CorrelationId}, RiskScore: {Score}",

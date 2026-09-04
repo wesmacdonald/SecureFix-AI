@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using Serilog;
@@ -36,7 +37,6 @@ try
 
     // Register repositories and unit of work
     builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-    builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
 
     // Register repository implementations
     builder.Services.AddScoped<IVulnerabilityAlertRepository>(sp =>
@@ -51,11 +51,15 @@ try
         new AuditEventRepository(sp.GetRequiredService<SecureFixDbContext>()));
 
     // Register business services
+    builder.Services.AddSingleton(
+        builder.Configuration.GetSection("RiskScoring").Get<RiskScoringPolicy>() ?? new RiskScoringPolicy());
     builder.Services.AddScoped<IRiskScoringEngine, RiskScoringEngine>();
     builder.Services.AddScoped<IAlertIngestionService, AlertIngestionService>();
     builder.Services.AddScoped<IApprovalService, ApprovalService>();
     builder.Services.AddScoped<IRemediationRecommendationService, RemediationRecommendationService>();
     builder.Services.AddScoped<IPullRequestProposalService, PullRequestProposalService>();
+    builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
+    builder.Services.AddSingleton<IKillSwitch, ConfigurationKillSwitch>();
 
     // Register AI provider factory and provider
     builder.Services.AddScoped<IAIRecommendationProviderFactory, AIRecommendationProviderFactory>();
@@ -84,6 +88,12 @@ try
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<SecureFixDbContext>();
+        await db.Database.EnsureCreatedAsync();
+    }
+
     // Configure the HTTP request pipeline
     if (app.Environment.IsDevelopment())
     {
@@ -94,6 +104,17 @@ try
     app.UseCors("SecureFixDemo");
     app.UseAuthentication();
     app.UseAuthorization();
+
+    app.Use(async (context, next) =>
+    {
+        await next();
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.RequestServices.GetRequiredService<IOperationalMetrics>()
+                .RecordRequest(context.Response.StatusCode >= StatusCodes.Status500InternalServerError);
+        }
+    });
+
     app.MapControllers();
 
     // Health check endpoint
@@ -115,6 +136,10 @@ try
     })
     .WithName("Ready");
 
+    app.MapGet("/metrics", (IOperationalMetrics metrics) => Results.Ok(metrics.GetSnapshot()))
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
+        .WithName("Metrics");
+
     app.Run();
 }
 catch (Exception ex)
@@ -125,4 +150,3 @@ finally
 {
     Log.CloseAndFlush();
 }
-

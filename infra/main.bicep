@@ -127,7 +127,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
           env: [
             {
               name: 'ASPNETCORE_ENVIRONMENT'
-              value: 'Production'
+              value: authMode == 'demo' ? 'Development' : 'Production'
             }
             {
               name: 'ASPNETCORE_URLS'

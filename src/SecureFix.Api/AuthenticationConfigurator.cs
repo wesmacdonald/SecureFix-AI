@@ -20,7 +20,10 @@ public static class AuthenticationConfigurator
 
     public static string ResolveAuthMode(IConfiguration configuration, IHostEnvironment environment)
     {
-        var mode = (configuration["AUTH_MODE"] ?? Environment.GetEnvironmentVariable("AUTH_MODE"))
+        var configuredMode = configuration["AUTH_MODE"];
+        var mode = (string.IsNullOrWhiteSpace(configuredMode)
+                ? Environment.GetEnvironmentVariable("AUTH_MODE")
+                : configuredMode)
             ?.Trim()
             .ToLowerInvariant();
 

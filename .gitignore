@@ -41,6 +41,8 @@ logs/
 artifacts/
 build-output/
 publish/
+demo-results-*
+demo-security-*
 
 # OS
 Thumbs.db

@@ -1,21 +1,23 @@
-version: '3.8'
-
 services:
   securefix-api:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "8888:5000"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5000
-      DATABASE_URL: sqlite:securefix.db
-      DATABASE_PROVIDER: sqlite
-      AI_PROVIDER: mock
-      POLICY_APPROVAL_REQUIRED: "true"
-      POLICY_KILL_SWITCH_ENABLED: "false"
-      LOG_LEVEL: Information
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:securefix.db}
+      DATABASE_PROVIDER: ${DATABASE_PROVIDER:-sqlite}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AZURE_AI_FOUNDRY_ENDPOINT: ${AZURE_AI_FOUNDRY_ENDPOINT:-}
+      AZURE_AI_FOUNDRY_KEY: ${AZURE_AI_FOUNDRY_KEY:-}
+      AZURE_AI_FOUNDRY_MODEL_ID: ${AZURE_AI_FOUNDRY_MODEL_ID:-gpt-4-turbo}
+      POLICY_APPROVAL_REQUIRED: ${POLICY_APPROVAL_REQUIRED:-true}
+      POLICY_AI_TIMEOUT_SECONDS: ${POLICY_AI_TIMEOUT_SECONDS:-30}
+      POLICY_KILL_SWITCH_ENABLED: ${POLICY_KILL_SWITCH_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-Information}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

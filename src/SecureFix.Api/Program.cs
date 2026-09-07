@@ -17,6 +17,8 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    DotEnvConfiguration.Load();
+
     var builder = WebApplication.CreateBuilder(args);
 
     // Add Serilog

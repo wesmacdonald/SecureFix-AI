@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
@@ -24,9 +23,7 @@ try
     // Add Serilog
     builder.Host.UseSerilog();
 
-    builder.Services.AddAuthentication(DemoAuthenticationHandler.DefaultScheme)
-        .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(DemoAuthenticationHandler.DefaultScheme, _ => { });
-    builder.Services.AddAuthorization();
+    builder.Services.AddSecureFixAuthentication(builder.Configuration, builder.Environment);
 
     // Add services to the container
     builder.Services.AddOpenApi();

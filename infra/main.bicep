@@ -19,8 +19,24 @@ param containerRegistryName string
 param imageTag string
 
 @secure()
-@description('Bearer token required by the demo authentication handler.')
-param demoToken string
+@description('Bearer token required by the demo authentication handler. Only used when authMode is "demo".')
+param demoToken string = ''
+
+@description('Authentication mode for the API. "entra" is required for production deployments; "demo" is for local/dev only.')
+@allowed([
+  'entra'
+  'demo'
+])
+param authMode string = 'entra'
+
+@description('Microsoft Entra ID tenant ID. Required when authMode is "entra".')
+param azureAdTenantId string = ''
+
+@description('Microsoft Entra ID app registration (client) ID for the SecureFix API. Required when authMode is "entra".')
+param azureAdClientId string = ''
+
+@description('Expected token audience (App ID URI), e.g. api://<client-id>. Required when authMode is "entra".')
+param azureAdAudience string = ''
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsWorkspaceName
@@ -111,7 +127,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
           env: [
             {
               name: 'ASPNETCORE_ENVIRONMENT'
-              value: 'Production'
+              value: authMode == 'demo' ? 'Development' : 'Production'
             }
             {
               name: 'ASPNETCORE_URLS'
@@ -124,6 +140,22 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
             {
               name: 'Database__Path'
               value: '/tmp/securefix.db'
+            }
+            {
+              name: 'AUTH_MODE'
+              value: authMode
+            }
+            {
+              name: 'AzureAd__TenantId'
+              value: azureAdTenantId
+            }
+            {
+              name: 'AzureAd__ClientId'
+              value: azureAdClientId
+            }
+            {
+              name: 'AzureAd__Audience'
+              value: azureAdAudience
             }
             {
               name: 'SECUREFIX_DEMO_TOKEN'

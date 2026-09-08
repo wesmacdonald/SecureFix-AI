@@ -21,7 +21,19 @@
       "value": "<image-tag>"
     },
     "demoToken": {
-      "value": "<supply-securely-at-deployment>"
+      "value": "<only-required-if-authMode-is-demo>"
+    },
+    "authMode": {
+      "value": "entra"
+    },
+    "azureAdTenantId": {
+      "value": "<entra-tenant-id>"
+    },
+    "azureAdClientId": {
+      "value": "<app-registration-client-id>"
+    },
+    "azureAdAudience": {
+      "value": "api://<app-registration-client-id>"
     }
   }
 }

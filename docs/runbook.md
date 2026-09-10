@@ -2,6 +2,7 @@
 
 ## Common operations
 
+- build and start the integrated dashboard/API
 - start the service in Docker
 - run unit and security tests
 - submit a sample alert
@@ -9,6 +10,20 @@
 - approve or reject the workflow
 - inspect audit and governance output
 - provision or update the Entra ID app registration and its roles
+
+## Dashboard operations
+
+- **Integrated local build**: run `npm ci` and `VITE_DATA_MODE=live VITE_AUTH_MODE=demo npm run build`
+  from `src/SecureFix.Web`, then start `src/SecureFix.Api`. The generated assets are written
+  to `src/SecureFix.Api/wwwroot` and served at `/`.
+- **Hot reload**: run `npm run dev` in `src/SecureFix.Web`; Vite proxies API calls to the
+  configured ASP.NET development URL.
+- **Production Entra build**: pass `VITE_AUTH_MODE=entra`, `VITE_ENTRA_CLIENT_ID`,
+  `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_API_SCOPE`, and the optional redirect URI as Docker
+  build arguments. These are public browser configuration, not secrets.
+- **Dashboard unavailable**: verify that `wwwroot/index.html` exists in the published image,
+  request `/health` to separate static-hosting failures from API failures, and check the
+  browser console for CSP or authentication errors.
 
 ## Identity operations
 

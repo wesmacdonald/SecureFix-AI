@@ -55,6 +55,7 @@ try
     builder.Services.AddScoped<IRiskScoringEngine, RiskScoringEngine>();
     builder.Services.AddScoped<IAlertIngestionService, AlertIngestionService>();
     builder.Services.AddScoped<IApprovalService, ApprovalService>();
+    builder.Services.AddScoped<IDashboardQueryService, DashboardQueryService>();
     builder.Services.AddScoped<IRemediationRecommendationService, RemediationRecommendationService>();
     builder.Services.AddScoped<IPullRequestProposalService, PullRequestProposalService>();
     builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
@@ -87,6 +88,23 @@ try
 
     var app = builder.Build();
 
+    app.Use(async (context, next) =>
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+            context.Response.Headers.TryAdd("X-Frame-Options", "DENY");
+            context.Response.Headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
+            context.Response.Headers.TryAdd(
+                "Content-Security-Policy",
+                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
+                "connect-src 'self' https://login.microsoftonline.com; " +
+                "frame-src https://login.microsoftonline.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+            return Task.CompletedTask;
+        });
+        await next();
+    });
+
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<SecureFixDbContext>();
@@ -99,7 +117,9 @@ try
         app.MapOpenApi();
     }
 
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
     app.UseCors("SecureFixDemo");
     app.UseAuthentication();
     app.UseAuthorization();
@@ -138,6 +158,26 @@ try
     app.MapGet("/metrics", (IOperationalMetrics metrics) => Results.Ok(metrics.GetSnapshot()))
         .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" })
         .WithName("Metrics");
+
+    app.MapFallback(async context =>
+    {
+        var isReservedPath = context.Request.Path.StartsWithSegments("/api") ||
+            context.Request.Path.StartsWithSegments("/health") ||
+            context.Request.Path.StartsWithSegments("/ready") ||
+            context.Request.Path.StartsWithSegments("/metrics") ||
+            context.Request.Path.StartsWithSegments("/openapi");
+        var indexPath = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
+
+        if ((!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method)) ||
+            isReservedPath || !File.Exists(indexPath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = "text/html; charset=utf-8";
+        await context.Response.SendFileAsync(indexPath);
+    });
 
     app.Run();
 }

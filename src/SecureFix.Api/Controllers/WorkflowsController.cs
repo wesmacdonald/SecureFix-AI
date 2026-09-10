@@ -16,14 +16,41 @@ using SecureFix.Core.Services;
 public class WorkflowsController : ControllerBase
 {
     private readonly IApprovalService _approvalService;
+    private readonly IDashboardQueryService _dashboardQueryService;
     private readonly ILogger<WorkflowsController> _logger;
 
     public WorkflowsController(
         IApprovalService approvalService,
+        IDashboardQueryService dashboardQueryService,
         ILogger<WorkflowsController> logger)
     {
         _approvalService = approvalService ?? throw new ArgumentNullException(nameof(approvalService));
+        _dashboardQueryService = dashboardQueryService ??
+            throw new ArgumentNullException(nameof(dashboardQueryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    [Authorize(Roles = "Viewer,Developer,SecurityReviewer,Admin")]
+    [HttpGet]
+    [ProducesResponseType(typeof(WorkflowListResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<WorkflowListResponseDto>> GetWorkflows(
+        [FromQuery] WorkflowListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _dashboardQueryService.GetWorkflowsAsync(query, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            ModelState.AddModelError(exception.ParamName ?? "query", exception.Message);
+            return BadRequest(new ValidationProblemDetails(ModelState)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Invalid workflow query"
+            });
+        }
     }
 
     /// <summary>
@@ -34,7 +61,7 @@ public class WorkflowsController : ControllerBase
     /// <response code="200">Workflow found and returned.</response>
     /// <response code="404">Workflow not found.</response>
     /// <response code="500">Server error during lookup.</response>
-    [Authorize(Roles = "Developer,SecurityReviewer,Admin")]
+    [Authorize(Roles = "Viewer,Developer,SecurityReviewer,Admin")]
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(WorkflowStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

@@ -1,13 +1,27 @@
 services:
   securefix-api:
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_DATA_MODE: ${VITE_DATA_MODE:-live}
+        VITE_AUTH_MODE: ${VITE_AUTH_MODE:-demo}
+        VITE_ENTRA_CLIENT_ID: ${VITE_ENTRA_CLIENT_ID:-}
+        VITE_ENTRA_TENANT_ID: ${VITE_ENTRA_TENANT_ID:-}
+        VITE_ENTRA_API_SCOPE: ${VITE_ENTRA_API_SCOPE:-}
+        VITE_ENTRA_REDIRECT_URI: ${VITE_ENTRA_REDIRECT_URI:-}
     ports:
       - "8888:5000"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
+      AUTH_MODE: ${AUTH_MODE:-entra}
+      AzureAd__TenantId: ${AzureAd__TenantId:-}
+      AzureAd__ClientId: ${AzureAd__ClientId:-}
+      AzureAd__Audience: ${AzureAd__Audience:-}
+      SECUREFIX_DEMO_TOKEN: ${SECUREFIX_DEMO_TOKEN:-securefix-demo-token}
       DATABASE_URL: ${DATABASE_URL:-sqlite:securefix.db}
       DATABASE_PROVIDER: ${DATABASE_PROVIDER:-sqlite}
       AI_PROVIDER: ${AI_PROVIDER:-mock}

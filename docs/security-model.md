@@ -29,6 +29,12 @@ App roles are defined once on the Entra ID app registration (see
 `infra/entra-app-registration.sh`) and assigned to users/groups from the Enterprise
 Application's "Users and groups" blade — never granted by the application itself.
 
+The integrated dashboard uses an MSAL browser adapter when built with `VITE_AUTH_MODE=entra`.
+Only public identifiers and API scopes are compiled into browser assets; client secrets are
+never used by or exposed to the dashboard. In demo mode, the visible role switcher is a local
+UX aid backed by the intentionally weak demo headers. Hiding or disabling a UI action is not
+a security boundary: every operation remains protected by API role authorization.
+
 ## Roles
 
 - Admin
@@ -36,8 +42,16 @@ Application's "Users and groups" blade — never granted by the application itse
 - Developer
 - Viewer
 
+## Browser controls
+
+The API serves the dashboard with a restrictive Content Security Policy, clickjacking
+protection, MIME-sniffing protection, and a strict referrer policy. Static dashboard routes
+are anonymous so the browser can load the application shell; protected data and mutations
+still require authenticated API calls.
+
 ## Secrets
 
 Secrets must come from environment variables or managed secret storage in production.
-No credentials are committed to source control.
+No credentials are committed to source control. `VITE_*` values are public build-time
+configuration and must never contain secrets.
 

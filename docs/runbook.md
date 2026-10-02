@@ -21,8 +21,10 @@
 - **Rotate/verify configuration**: confirm `AUTH_MODE=entra` and `AzureAd__TenantId`,
   `AzureAd__ClientId`, `AzureAd__Audience` are set in the deployment environment. The API
   fails to start in `Production` if `AUTH_MODE` is not `entra` (fail closed).
-- **Local/dev only**: `AUTH_MODE=demo` uses a static bearer token (`SECUREFIX_DEMO_TOKEN`)
-  and a self-asserted `X-User-Role` header — never use this mode outside local development.
+- **Local/dev only**: `AUTH_MODE=demo` uses `SECUREFIX_DEMO_TOKEN` for the fixed Developer
+  identity and, optionally, `SECUREFIX_DEMO_REVIEWER_TOKEN` for the fixed SecurityReviewer
+  identity. Set distinct, non-empty, high-entropy values; role and identity headers are ignored.
+  The Compose port is bound to `127.0.0.1`. Never use this mode outside local development.
 
 ## Failure handling
 

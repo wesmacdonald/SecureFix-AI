@@ -88,7 +88,7 @@ public class WorkflowsController : ControllerBase
     /// Only SecurityReviewer role is authorized.
     /// </summary>
     /// <param name="id">Alert/Workflow ID.</param>
-    /// <param name="request">Approval details (reviewer, optional reason).</param>
+    /// <param name="request">Approval decision and optional reason.</param>
     /// <returns>Updated workflow status.</returns>
     /// <response code="200">Workflow approved successfully.</response>
     /// <response code="400">Invalid request (validation failed, already decided, workflow not found).</response>
@@ -126,22 +126,16 @@ public class WorkflowsController : ControllerBase
             });
         }
 
-        var reviewerRole = User.FindFirstValue(ClaimTypes.Role) ?? request.ReviewerRole ?? "SecurityReviewer";
-        if (string.IsNullOrWhiteSpace(request.Reviewer))
+        if (!TryGetAuthenticatedReviewer(out var reviewer, out var reviewerRole))
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid Reviewer",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Reviewer identity is required."
-            });
+            return Forbid();
         }
 
         try
         {
-            _logger.LogInformation("Approving workflow {WorkflowId} by {Reviewer} as {Role}", id, request.Reviewer, reviewerRole);
+            _logger.LogInformation("Approving workflow {WorkflowId} by {Reviewer} as {Role}", id, reviewer, reviewerRole);
 
-            var updatedStatus = await _approvalService.ApproveAlertAsync(id, request.Reviewer, request.Reason, reviewerRole);
+            var updatedStatus = await _approvalService.ApproveAlertAsync(id, reviewer, request.Reason, reviewerRole);
 
             return Ok(updatedStatus);
         }
@@ -203,7 +197,7 @@ public class WorkflowsController : ControllerBase
     /// Only SecurityReviewer role is authorized.
     /// </summary>
     /// <param name="id">Alert/Workflow ID.</param>
-    /// <param name="request">Rejection details (reviewer, optional reason).</param>
+    /// <param name="request">Rejection decision and optional reason.</param>
     /// <returns>Updated workflow status (Rejected).</returns>
     /// <response code="200">Workflow rejected successfully.</response>
     /// <response code="400">Invalid request (validation failed, already decided, workflow not found).</response>
@@ -241,22 +235,16 @@ public class WorkflowsController : ControllerBase
             });
         }
 
-        var reviewerRole = User.FindFirstValue(ClaimTypes.Role) ?? request.ReviewerRole ?? "SecurityReviewer";
-        if (string.IsNullOrWhiteSpace(request.Reviewer))
+        if (!TryGetAuthenticatedReviewer(out var reviewer, out var reviewerRole))
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid Reviewer",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Reviewer identity is required."
-            });
+            return Forbid();
         }
 
         try
         {
-            _logger.LogInformation("Rejecting workflow {WorkflowId} by {Reviewer} as {Role}", id, request.Reviewer, reviewerRole);
+            _logger.LogInformation("Rejecting workflow {WorkflowId} by {Reviewer} as {Role}", id, reviewer, reviewerRole);
 
-            var updatedStatus = await _approvalService.RejectAlertAsync(id, request.Reviewer, request.Reason, reviewerRole);
+            var updatedStatus = await _approvalService.RejectAlertAsync(id, reviewer, request.Reason, reviewerRole);
 
             return Ok(updatedStatus);
         }
@@ -311,5 +299,14 @@ public class WorkflowsController : ControllerBase
                 Type = "https://securefix.example.com/errors/rejection-failed"
             });
         }
+    }
+
+    private bool TryGetAuthenticatedReviewer(out string reviewer, out string reviewerRole)
+    {
+        reviewer = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
+        reviewerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+
+        return !string.IsNullOrWhiteSpace(reviewer)
+            && (reviewerRole is "SecurityReviewer" or "Admin");
     }
 }

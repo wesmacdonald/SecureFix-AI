@@ -26,14 +26,20 @@ public class DemoAuthenticationHandler : AuthenticationHandler<AuthenticationSch
         }
 
         var token = authorization["Bearer ".Length..].Trim();
-        var expectedToken = Environment.GetEnvironmentVariable("SECUREFIX_DEMO_TOKEN") ?? "securefix-demo-token";
-        if (!string.Equals(token, expectedToken, StringComparison.Ordinal))
+        var developerToken = Environment.GetEnvironmentVariable("SECUREFIX_DEMO_TOKEN");
+        var reviewerToken = Environment.GetEnvironmentVariable("SECUREFIX_DEMO_REVIEWER_TOKEN");
+        var isDeveloper = !string.IsNullOrWhiteSpace(developerToken)
+            && string.Equals(token, developerToken, StringComparison.Ordinal);
+        var isReviewer = !string.IsNullOrWhiteSpace(reviewerToken)
+            && string.Equals(token, reviewerToken, StringComparison.Ordinal);
+
+        if ((!isDeveloper && !isReviewer) || (isDeveloper && isReviewer))
         {
-            return Task.FromResult(AuthenticateResult.Fail("Invalid demo token."));
+            return Task.FromResult(AuthenticateResult.Fail("Invalid or misconfigured demo credentials."));
         }
 
-        var userId = Request.Headers["X-User-Id"].FirstOrDefault() ?? "demo-user";
-        var role = Request.Headers["X-User-Role"].FirstOrDefault() ?? "Developer";
+        var userId = isReviewer ? "demo-security-reviewer" : "demo-developer";
+        var role = isReviewer ? "SecurityReviewer" : "Developer";
 
         var claims = new[]
         {

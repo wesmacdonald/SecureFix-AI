@@ -4,10 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8888:5000"
+      - "127.0.0.1:8888:5000"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
+      AUTH_MODE: ${AUTH_MODE:-demo}
+      SECUREFIX_DEMO_TOKEN: ${SECUREFIX_DEMO_TOKEN:-}
+      SECUREFIX_DEMO_REVIEWER_TOKEN: ${SECUREFIX_DEMO_REVIEWER_TOKEN:-}
       DATABASE_URL: ${DATABASE_URL:-sqlite:securefix.db}
       DATABASE_PROVIDER: ${DATABASE_PROVIDER:-sqlite}
       AI_PROVIDER: ${AI_PROVIDER:-mock}

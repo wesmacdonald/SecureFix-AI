@@ -10,8 +10,8 @@ namespace SecureFix.Api;
 /// - "entra" (recommended, required in Production): validates Microsoft Entra ID issued
 ///   JWTs via Microsoft.Identity.Web. App roles (Admin, SecurityReviewer, Developer, Viewer)
 ///   are read from the token's "roles" claim and mapped to ClaimTypes.Role automatically.
-/// - "demo" (local/dev only): uses a static bearer token + X-User-Role header. This mode
-///   is intentionally weak and must never be enabled in Production.
+/// - "demo" (local/dev only): uses explicitly configured developer and reviewer bearer
+///   tokens with fixed identities and roles. This mode must never be enabled in Production.
 /// </summary>
 public static class AuthenticationConfigurator
 {

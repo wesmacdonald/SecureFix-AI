@@ -21,9 +21,12 @@ The API supports two authentication modes, selected via `AUTH_MODE`:
   using Microsoft.Identity.Web. Tokens must have the correct issuer, audience, signature,
   and expiration. Roles are asserted by Entra ID in the token's `roles` claim, which
   Microsoft.Identity.Web maps to `ClaimTypes.Role` for use by `[Authorize(Roles = ...)]`.
-- `demo` (local/dev only): a static bearer token plus a self-asserted `X-User-Role` header.
-  This mode is intentionally weak — it exists only for offline demos — and the API fails
-  to start if `ASPNETCORE_ENVIRONMENT=Production` and `AUTH_MODE` is not `entra` (fail closed).
+- `demo` (local/dev only): explicitly configured `SECUREFIX_DEMO_TOKEN` and optional
+  `SECUREFIX_DEMO_REVIEWER_TOKEN` bearer tokens map to fixed Developer and SecurityReviewer
+  identities. Client-supplied identity and role headers are ignored. Configure distinct,
+  non-empty, high-entropy tokens for local testing; requests are unauthenticated when a token
+  is unset. Compose publishes only on loopback by default. The API fails to start if
+  `ASPNETCORE_ENVIRONMENT=Production` and `AUTH_MODE` is not `entra` (fail closed).
 
 App roles are defined once on the Entra ID app registration (see
 `infra/entra-app-registration.sh`) and assigned to users/groups from the Enterprise
@@ -40,4 +43,3 @@ Application's "Users and groups" blade — never granted by the application itse
 
 Secrets must come from environment variables or managed secret storage in production.
 No credentials are committed to source control.
-

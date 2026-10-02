@@ -8,15 +8,13 @@ using System.ComponentModel.DataAnnotations;
 public class ApprovalRequestDto
 {
     /// <summary>
-    /// Reviewer identity (user ID or email).
+    /// Legacy client field; ignored. Reviewer identity comes from authenticated claims.
     /// </summary>
-    [Required]
     [StringLength(255)]
-    public string Reviewer { get; set; } = null!;
+    public string? Reviewer { get; set; }
 
     /// <summary>
-    /// Role of the reviewer submitting the decision.
-    /// Only SecurityReviewer and Admin are allowed to approve or reject workflow actions.
+    /// Legacy client field; ignored. Reviewer role comes from authenticated claims.
     /// </summary>
     [StringLength(100)]
     public string? ReviewerRole { get; set; }

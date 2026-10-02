@@ -1,0 +1,8 @@
+name: SecureFix CodeQL config
+
+queries:
+  - uses: security-extended
+
+paths-ignore:
+  - "**/bin/**"
+  - "**/obj/**"

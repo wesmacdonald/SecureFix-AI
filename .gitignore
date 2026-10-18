@@ -41,6 +41,7 @@ logs/
 artifacts/
 build-output/
 publish/
+src/SecureFix.Api/wwwroot/
 demo-results-*
 demo-security-*
 

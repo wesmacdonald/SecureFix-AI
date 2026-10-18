@@ -6,6 +6,10 @@ bin
 obj
 **/bin
 **/obj
+**/node_modules
+**/dist
+**/coverage
+src/SecureFix.Api/wwwroot
 *.db
 *.sqlite
 *.sqlite3

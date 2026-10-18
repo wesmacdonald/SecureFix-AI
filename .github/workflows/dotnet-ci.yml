@@ -27,6 +27,32 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/SecureFix.Web/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: src/SecureFix.Web
+        run: npm ci
+
+      - name: Test dashboard
+        working-directory: src/SecureFix.Web
+        run: npm test
+
+      - name: Build dashboard
+        working-directory: src/SecureFix.Web
+        env:
+          VITE_DATA_MODE: live
+          VITE_AUTH_MODE: demo
+        run: npm run build
+
+      - name: Audit dashboard production dependencies
+        working-directory: src/SecureFix.Web
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Restore dependencies
         run: dotnet restore SecureFix.slnx
 

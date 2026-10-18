@@ -28,9 +28,9 @@ Dependabot or JSON alert
 
 ### How would this be deployed?
 
-Hackathon demo: containerized FastAPI app with SQLite and local/mock providers.
+Hackathon demo: a React dashboard and ASP.NET Core API shipped as one container, with SQLite and local/mock providers.
 
-Production path: separately scalable API and worker services on Azure Container Apps or AKS, backed by managed messaging, PostgreSQL, managed identity, secrets management, and centralized observability.
+Production path: the integrated dashboard/API container can run on Azure Container Apps or AKS, with workers scaled separately and backed by managed messaging, PostgreSQL, managed identity, secrets management, and centralized observability.
 
 ### How would this be secured?
 
@@ -67,8 +67,8 @@ AI timeout or invalid output falls back to a rules-based recommendation and requ
 - automatic merge
 - automatic production deployment
 - autonomous approval
-- full enterprise identity integration
-- complex front-end UI
+- automatic production deployment from the dashboard
+- direct merge or release actions
 
 ## Repository guide
 
@@ -94,12 +94,23 @@ The intended demo should show:
 7. a blocked prompt-injection or unauthorized-action attempt
 8. a fallback path when AI is unavailable
 
-## Running the local demo
+## Running the dashboard locally
 
-Start the API, then run the authenticated end-to-end validation script in a second terminal:
+Build the integrated dashboard, then start the API:
 
 ```bash
+cd src/SecureFix.Web
+npm ci
+VITE_DATA_MODE=live VITE_AUTH_MODE=demo npm run build
+cd ../..
 dotnet run --project src/SecureFix.Api --urls http://127.0.0.1:5000
+```
+
+Open `http://127.0.0.1:5000`. The development role switcher uses the existing demo bearer token and headers; it must never be enabled in Production. For frontend hot reload, run `npm run dev` and let Vite proxy API calls to the configured ASP.NET development URL.
+
+To run the authenticated API validation script in a second terminal:
+
+```bash
 bash ./demo-end-to-end.sh
 ```
 
@@ -114,8 +125,15 @@ writes evidence to `demo-security-results-*`.
 bash ./demo-security-controls.sh
 ```
 
+## Dashboard capabilities
+
+- operational overview with workflow and severity distributions
+- searchable, filterable vulnerability work queue
+- workflow detail with risk, approval, remediation, proposal, audit, and governance views
+- validated alert ingestion and sample payloads
+- role-aware human approval and rejection actions
+- demo identity switching for local development and an MSAL/Entra production adapter
+
 ## Status
 
-This repository is organized around the implementation roadmap and supporting docs for the hackathon MVP.
-
-The preferred delivery approach is a reproducible, production-minded demo that favors security, governance, traceability, and human oversight over UI polish.
+The repository provides a reproducible, production-minded demo that combines a governed security workflow with an operator dashboard while preserving security, traceability, and human oversight.

@@ -17,7 +17,7 @@ FROM build AS publish
 RUN dotnet publish "src/SecureFix.Api/SecureFix.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 WORKDIR /app
 COPY --from=publish /app/publish .
 
